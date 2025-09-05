@@ -1,0 +1,142 @@
+import Prisma from "../db/db.js";
+import ApiError from "../utils/ApiError.js";
+import ApiResponse from "../utils/ApiResponse.js";
+import asyncHandler from "../utils/AsyncHandler.js";
+
+// -------------------- Create KYC --------------------
+export const createKyc = asyncHandler(async (req, res) => {
+  const {
+    panNumber,
+    aadhaarNumber,
+    fatherName,
+    dob,
+    homeAddress,
+    shopName,
+    district,
+    shopAddress,
+    pinCode,
+    state,
+  } = req.body;
+
+  if (
+    !panNumber ||
+    !aadhaarNumber ||
+    !fatherName ||
+    !dob ||
+    !homeAddress ||
+    !shopName ||
+    !district ||
+    !pinCode ||
+    !shopAddress ||
+    !state
+  ) {
+    return ApiError.send(res, 422, "All fields are required");
+  }
+
+  // Validate formats
+  if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNumber)) {
+    return ApiError.send(res, 400, "Invalid PAN number format (ABCDE1234F)");
+  }
+
+  if (!/^[0-9]{12}$/.test(aadhaarNumber)) {
+    return ApiError.send(res, 400, "Invalid Aadhaar number format (12 digits)");
+  }
+
+  // Check if KYC already exists for this user
+  const existingUserKyc = await Prisma.kycDetail.findFirst({
+    where: { userId: req.user.id },
+  });
+  if (existingUserKyc) {
+    return ApiError.send(
+      res,
+      409,
+      "KYC already submitted. Please wait for verification."
+    );
+  }
+
+  // Check if PAN or Aadhaar exists globally
+  const existingKyc = await Prisma.kycDetail.findFirst({
+    where: { OR: [{ panNumber }, { aadhaarNumber }] },
+  });
+  if (existingKyc) {
+    return ApiError.send(res, 409, "PAN or Aadhaar already exists");
+  }
+
+  // Get uploaded files
+  const panImagePath = req.files?.panImage?.[0]?.path;
+  const aadhaarFrontPath = req.files?.aadhaarImageFront?.[0]?.path;
+  const aadhaarBackPath = req.files?.aadhaarImageBack?.[0]?.path;
+  const shopAddressPath = req.files?.shopAddressImage?.[0]?.path;
+
+  if (
+    !panImagePath ||
+    !aadhaarFrontPath ||
+    !aadhaarBackPath ||
+    !shopAddressPath
+  ) {
+    return ApiError.send(res, 422, "All image files are required");
+  }
+
+  // Store in DB
+  const kyc = await Prisma.kycDetail.create({
+    data: {
+      panNumber,
+      aadhaarNumber,
+      panImage: panImagePath,
+      aadhaarImageFront: aadhaarFrontPath,
+      aadhaarImageBack: aadhaarBackPath,
+      shopAddressImage: shopAddressPath,
+      fatherName,
+      dob,
+      homeAddress,
+      shopName,
+      district,
+      pinCode,
+      state,
+      shopAddress,
+      userId: req.user.id,
+    },
+  });
+
+  res
+    .status(201)
+    .json(
+      new ApiResponse(
+        201,
+        "KYC submitted successfully (Pending verification)",
+        kyc
+      )
+    );
+});
+
+// -------------------- KYC verefied by admin --------------------
+export const verifyKyc = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!["VERIFIED", "REJECTED"].includes(status.toUpperCase())) {
+    return ApiError.send(
+      res,
+      400,
+      "Invalid status, must be VERIFIED or REJECTED"
+    );
+  }
+
+  const kyc = await Prisma.kycDetail.findUnique({ where: { id } });
+  if (!kyc) return ApiError.send(res, 404, "KYC record not found");
+
+  const updatedKyc = await Prisma.kycDetail.update({
+    where: { id },
+    data: { kycStatus: status.toUpperCase() },
+  });
+
+  if (status.toUpperCase() === "VERIFIED") {
+    await Prisma.user.update({
+      where: { id: kyc.userId },
+      data: { isAuthorized: true, status: "ACTIVE" },
+    });
+  }
+  res
+    .status(200)
+    .json(new ApiResponse(200, `KYC ${status} successfully`, updatedKyc));
+});

@@ -1,0 +1,241 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id            String   @id @default(cuid())
+    name          String
+    email         String   @unique
+    phone         String   @unique
+    password      String
+    role          UserRole
+    walletBalance Float    @default(0)
+    parentId      String?
+
+    status            UserStatus          @default(IN_ACTIVE)
+    isAuthorized      Boolean             @default(false)
+    createdAt         DateTime            @default(now())
+    updatedAt         DateTime            @updatedAt
+    bankDetails       BankDetail[]
+    kycDetails        KycDetail[]
+    auditLogs         AuditLog[]
+    apiKeys           ApiKey[]
+    Wallet            Wallet?
+    Commission        Commission[]
+    PayinTransaction  PayinTransaction[]
+    PayoutTransaction PayoutTransaction[]
+    WalletTransaction WalletTransaction[]
+    WalletTopup       WalletTopup[]
+
+    @@map("users")
+}
+
+model KycDetail {
+    id                String    @id @default(cuid())
+    panNumber         String    @unique @db.VarChar(10)
+    aadhaarNumber     String    @unique @db.VarChar(12)
+    panImage          String
+    aadhaarImageFront String
+    aadhaarImageBack  String
+    fatherName        String
+    dob               String
+    homeAddress       String    @db.LongText
+    kycStatus         KycStatus @default(PENDING)
+    shopName          String    @db.LongText
+    district          String
+    pinCode           String
+    state             String
+    userId            String
+    shopAddress       String    @db.LongText
+    shopAddressImage  String
+    createdAt         DateTime  @default(now())
+    updatedAt         DateTime  @updatedAt
+    User              User      @relation(fields: [userId], references: [id])
+
+    @@map("kyc_details")
+}
+
+model BankDetail {
+    id            String   @id @default(cuid())
+    userId        String
+    accountHolder String
+    accountNumber String   @unique
+    ifscCode      String
+    bankName      String?
+    passbookImage String?
+    isVerified    Boolean  @default(false)
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, accountNumber])
+    @@map("bank_details")
+}
+
+model Wallet {
+    id           String              @id @default(cuid())
+    userId       String              @unique
+    balance      Float               @default(0)
+    user         User                @relation(fields: [userId], references: [id])
+    createdAt    DateTime            @default(now())
+    updatedAt    DateTime            @updatedAt
+    transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+    id          String          @id @default(cuid())
+    userId      String
+    type        TransactionType
+    amount      Float
+    description String?
+    createdAt   DateTime        @default(now())
+
+    user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    Wallet   Wallet? @relation(fields: [walletId], references: [id])
+    walletId String?
+
+    @@map("wallet_transactions")
+}
+
+enum TransactionType {
+    CREDIT
+    DEBIT
+}
+
+model WalletTopup {
+    id        String      @id @default(cuid())
+    userId    String
+    orderId   String      @unique
+    paymentId String?
+    amount    Float
+    status    TopupStatus @default(PENDING) // PENDING, VERIFIED, REJECTED
+    createdAt DateTime    @default(now())
+    updatedAt DateTime    @updatedAt
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum TopupStatus {
+    PENDING
+    VERIFIED
+    REJECTED
+}
+
+model UserLimit {
+    id        String   @id @default(cuid())
+    userId    String   @unique
+    maxLimit  Float    @default(0) // e.g. 10000
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Commission {
+    id        String         @id @default(cuid())
+    userId    String? // agar specific user ke liye commission set hai
+    role      UserRole? // agar role based commission set hai
+    service   String // example: PAYIN, PAYOUT, BBPS, RECHARGE
+    type      CommissionType // FLAT ya PERCENT
+    value     Float
+    createdAt DateTime       @default(now())
+    updatedAt DateTime       @updatedAt
+    user      User?          @relation(fields: [userId], references: [id])
+}
+
+enum CommissionType {
+    FLAT
+    PERCENT
+}
+
+model PayinTransaction {
+    id        String    @id @default(cuid())
+    userId    String
+    amount    Float
+    status    TxnStatus @default(PENDING)
+    orderId   String    @unique // PG orderId (Razorpay, Cashfree, etc.)
+    paymentId String? // PG payment id (success pe milega)
+    provider  String // eg. "RAZORPAY", "CASHFREE"
+    meta      Json? // raw PG response store karne ke liye
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+
+    user User @relation(fields: [userId], references: [id])
+}
+
+model PayoutTransaction {
+    id            String    @id @default(cuid())
+    userId        String
+    amount        Float
+    status        TxnStatus @default(PENDING)
+    requestId     String    @unique // Our internal payout request id
+    utr           String? // Bank reference / UTR no. after success
+    provider      String // eg. "RAZORPAY_PAYOUT", "CASHFREE_PAYOUT"
+    accountNumber String
+    ifsc          String
+    meta          Json?
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
+
+    user User @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+    id          String   @id @default(cuid())
+    userId      String?
+    action      String
+    description String?
+    ipAddress   String?
+    userAgent   String?
+    createdAt   DateTime @default(now())
+
+    user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+    @@map("audit_logs")
+}
+
+model ApiKey {
+    id        String    @id @default(cuid())
+    userId    String
+    key       String    @unique
+    name      String
+    isActive  Boolean   @default(true)
+    createdAt DateTime  @default(now())
+    expiresAt DateTime?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("api_keys")
+}
+
+// Enums
+enum UserRole {
+    SUPER_ADMIN
+    API_HOLDER
+    ADMIN
+    STATE_HOLDER
+    MASTER_DISTRIBUTOR
+    DISTRIBUTOR
+    AGENT
+}
+
+enum UserStatus {
+    IN_ACTIVE
+    ACTIVE
+}
+
+enum KycStatus {
+    PENDING
+    VERIFIED
+    REJECTED
+}
+
+enum TxnStatus {
+    PENDING
+    SUCCESS
+    FAILED
+}
