@@ -1,5 +1,5 @@
 import express from "express";
-import { createKyc, verifyKyc } from "../controllers/kyc.controller.js";
+import { createKyc, getAllKyc, verifyKyc } from "../controllers/kyc.controller.js";
 import { authorizeRoles, isAuthenticated } from "../middlewares/auth.middleware.js";
 import { kycUpload } from "../middlewares/multer.middleware.js";
 
@@ -18,5 +18,6 @@ router.post(
 );
 
 router.put("/verify/:id", isAuthenticated, authorizeRoles(["ADMIN"]), verifyKyc);
+router.get("/get-all-kyc", isAuthenticated, authorizeRoles(["ADMIN"]), getAllKyc);
 
 export default router;

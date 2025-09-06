@@ -1,6 +1,7 @@
 import express from "express";
 import {
   createUser,
+  getAllUsers,
   // createAgent,
   // createDistributor,
 } from "../controllers/user.controller.js";
@@ -29,5 +30,12 @@ router.post(
 //   authorizeRoles("MASTER_DISTRIBUTOR"),
 //   createDistributor
 // );
+
+router.get(
+  "/get-all-users",
+  isAuthenticated,
+  authorizeRoles("ADMIN"),
+  getAllUsers
+);
 
 export default router;

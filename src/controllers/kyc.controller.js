@@ -140,3 +140,22 @@ export const verifyKyc = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, `KYC ${status} successfully`, updatedKyc));
 });
+
+// -------------------- KYC get all by admin --------------------
+export const getAllKyc = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  console.log(userId);
+
+  if (!userId) return ApiError.send(res, 403, "Unauthozed Access");
+
+  const kycdata = await Prisma.kycDetail.findMany({
+    where: { userId },
+    include: { User: true },
+  });
+
+  if (!kycdata) return ApiError.send(res, 404, "Kyc not found");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, `KYC fetched successfully`, kycdata));
+});

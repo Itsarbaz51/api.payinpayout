@@ -1,5 +1,6 @@
 import Prisma from "../db/db.js";
-import  ApiResponse  from "../utils/ApiResponse.js";
+import ApiError from "../utils/ApiError.js";
+import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/AsyncHandler.js";
 import { hashPassword } from "../utils/lib.js";
 
@@ -160,4 +161,24 @@ export const deleteUser = asyncHandler(async (req, res) => {
 
   await Prisma.user.delete({ where: { id } });
   return res.status(200).json(new ApiResponse(200, "User deleted"));
+});
+
+export const getAllUsers = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  if (!userId) return ApiError.send(res, 403, "Unauthorized access");
+  const users = await Prisma.user.findMany({
+    where: {
+      NOT: {
+        role: "ADMIN"
+      }
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  if (!users) return ApiError.send(res, 404, "user/members not found.");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "fetched all memebers/users", users));
 });

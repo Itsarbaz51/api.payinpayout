@@ -37,7 +37,7 @@ import bankRoutes from "./routes/bank.routes.js";
 app.use("/api/auth", authRoutes);
 app.use("/api/kyc", kycRoutes);
 app.use("/api/bank", bankRoutes);
-app.use("/users", userRoutes);
+app.use("/api/users", userRoutes);
 app.use("/wallet", walletRoutes);
 app.use("/commission", commissionRoutes);
 app.use("/payin", payinRoutes);
