@@ -65,7 +65,7 @@ export const createKyc = asyncHandler(async (req, res) => {
   const shopAddressPath = req.files?.shopAddressImage?.[0]?.path;
   const passbookImagePath = req.files?.passbookImage?.[0]?.path;
 
-  
+
 
   if (
     !panImagePath ||
@@ -116,12 +116,23 @@ export const createKyc = asyncHandler(async (req, res) => {
     );
 });
 
-// -------------------- KYC verefied by admin --------------------
+// -------------------- KYC verified by admin --------------------
 export const verifyKyc = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  if (!["VERIFIED", "REJECTED"].includes(status.toUpperCase())) {
+  console.log(status);
+  console.log(id);
+  
+
+  if (!status) {
+    return ApiError.send(res, 400, "Status is required");
+  }
+  const normalizedStatus = status.toUpperCase();
+
+  const validStatuses = ["VERIFIED", "REJECTED"];
+
+  if (!validStatuses.includes(normalizedStatus)) {
     return ApiError.send(
       res,
       400,
@@ -133,40 +144,69 @@ export const verifyKyc = asyncHandler(async (req, res) => {
   if (!kyc) return ApiError.send(res, 404, "KYC record not found");
 
   const updatedKyc = await Prisma.kycDetail.update({
-    where: { id },
-    data: { kycStatus: status.toUpperCase() },
+    where: { id: kyc.id },
+    data: { kycStatus: normalizedStatus },
   });
 
-  if (status.toUpperCase() === "VERIFIED") {
+  if (normalizedStatus === "VERIFIED") {
     await Prisma.user.update({
       where: { id: kyc.userId },
-      data: { isAuthorized: true, status: "ACTIVE" },
+      data: { isAuthorized: true, status: "ACTIVE", isKyc: true },
+    });
+  } else if (normalizedStatus === "REJECTED") {
+    await Prisma.user.update({
+      where: { id: kyc.userId },
+      data: { isAuthorized: false, status: "IN_ACTIVE", isKyc: false },
     });
   }
-  res
-    .status(200)
-    .json(new ApiResponse(200, `KYC ${status} successfully`, updatedKyc));
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      `KYC ${normalizedStatus} successfully`,
+      updatedKyc
+    )
+  );
 });
 
-// -------------------- KYC get all by admin --------------------
+
+// -------------------- KYC get all --------------------
 export const getAllKyc = asyncHandler(async (req, res) => {
   const userId = req.user?.id;
+  const userRole = req.user?.role;
 
-  if (!userId) return ApiError.send(res, 403, "Unauthorized Access");
+  if (!userId) {
+    return ApiError.send(res, 403, "Unauthorized Access");
+  }
 
-  const kycdata = await Prisma.kycDetail.findMany({
-    where: {
-      User: {
-        NOT: {
-          role: { in: ["ADMIN", "SUPER_ADMIN"] },
-        },
-      },
-    },
-    include: { User: true },
-  });
+  let kycdata;
 
-  if (!kycdata || kycdata.length === 0)
+  if (["ADMIN", "SUPER_ADMIN"].includes(userRole)) {
+    kycdata = await Prisma.kycDetail.findMany({
+      include: { User: true },
+    });
+  } else {
+    kycdata = await Prisma.kycDetail.findMany({
+      where: { userId },
+      include: { User: true },
+    });
+
+    kycdata = kycdata.map((kyc) => ({
+      ...kyc,
+      panNumber:
+        kyc.panNumber.length > 4
+          ? kyc.panNumber.replace(/.(?=.{4})/g, "*")
+          : kyc.panNumber,
+      aadhaarNumber:
+        kyc.aadhaarNumber.length > 4
+          ? kyc.aadhaarNumber.replace(/.(?=.{4})/g, "*")
+          : kyc.aadhaarNumber,
+    }));
+  }
+
+  if (!kycdata || kycdata.length === 0) {
     return ApiError.send(res, 404, "KYC not found");
+  }
 
   return res
     .status(200)

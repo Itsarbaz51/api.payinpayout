@@ -13,6 +13,7 @@ router.post(
     { name: "aadhaarImageBack", maxCount: 1 },
     { name: "panImage", maxCount: 1 },
     { name: "shopAddressImage", maxCount: 1 },
+    { name: "passbookImage", maxCount: 1 },
   ]),
   createKyc
 );
