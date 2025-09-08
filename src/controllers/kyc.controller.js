@@ -33,7 +33,6 @@ export const createKyc = asyncHandler(async (req, res) => {
     return ApiError.send(res, 422, "All fields are required");
   }
 
-  // Validate formats
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNumber)) {
     return ApiError.send(res, 400, "Invalid PAN number format (ABCDE1234F)");
   }
@@ -42,7 +41,6 @@ export const createKyc = asyncHandler(async (req, res) => {
     return ApiError.send(res, 400, "Invalid Aadhaar number format (12 digits)");
   }
 
-  // Check if KYC already exists for this user
   const existingUserKyc = await Prisma.kycDetail.findFirst({
     where: { userId: req.user.id },
   });
@@ -54,7 +52,6 @@ export const createKyc = asyncHandler(async (req, res) => {
     );
   }
 
-  // Check if PAN or Aadhaar exists globally
   const existingKyc = await Prisma.kycDetail.findFirst({
     where: { OR: [{ panNumber }, { aadhaarNumber }] },
   });
@@ -62,20 +59,29 @@ export const createKyc = asyncHandler(async (req, res) => {
     return ApiError.send(res, 409, "PAN or Aadhaar already exists");
   }
 
-  // Get uploaded files
   const panImagePath = req.files?.panImage?.[0]?.path;
   const aadhaarFrontPath = req.files?.aadhaarImageFront?.[0]?.path;
   const aadhaarBackPath = req.files?.aadhaarImageBack?.[0]?.path;
   const shopAddressPath = req.files?.shopAddressImage?.[0]?.path;
+  const passbookImagePath = req.files?.passbookImage?.[0]?.path;
+
+  
 
   if (
     !panImagePath ||
     !aadhaarFrontPath ||
     !aadhaarBackPath ||
-    !shopAddressPath
+    !shopAddressPath ||
+    !passbookImagePath
   ) {
     return ApiError.send(res, 422, "All image files are required");
   }
+
+  console.log("panImagePathfd", panImagePath);
+  console.log("aadhaarFrontPath", aadhaarFrontPath);
+  console.log("aadhaarBackPath", aadhaarBackPath);
+  console.log("shopAddressPath", shopAddressPath);
+  console.log("passbookImagePathdfssssssssssss", passbookImagePath);
 
   // Store in DB
   const kyc = await Prisma.kycDetail.create({
@@ -86,6 +92,7 @@ export const createKyc = asyncHandler(async (req, res) => {
       aadhaarImageFront: aadhaarFrontPath,
       aadhaarImageBack: aadhaarBackPath,
       shopAddressImage: shopAddressPath,
+      passbookImage: passbookImagePath,
       fatherName,
       dob,
       homeAddress,
@@ -143,19 +150,25 @@ export const verifyKyc = asyncHandler(async (req, res) => {
 
 // -------------------- KYC get all by admin --------------------
 export const getAllKyc = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  console.log(userId);
+  const userId = req.user?.id;
 
-  if (!userId) return ApiError.send(res, 403, "Unauthozed Access");
+  if (!userId) return ApiError.send(res, 403, "Unauthorized Access");
 
   const kycdata = await Prisma.kycDetail.findMany({
-    where: { userId },
+    where: {
+      User: {
+        NOT: {
+          role: { in: ["ADMIN", "SUPER_ADMIN"] },
+        },
+      },
+    },
     include: { User: true },
   });
 
-  if (!kycdata) return ApiError.send(res, 404, "Kyc not found");
+  if (!kycdata || kycdata.length === 0)
+    return ApiError.send(res, 404, "KYC not found");
 
   return res
     .status(200)
-    .json(new ApiResponse(200, `KYC fetched successfully`, kycdata));
+    .json(new ApiResponse(200, "KYC fetched successfully", kycdata));
 });

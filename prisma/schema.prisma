@@ -8,15 +8,15 @@ datasource db {
 }
 
 model User {
-    id            String   @id @default(cuid())
-    name          String
-    email         String   @unique
-    phone         String   @unique
-    password      String
-    role          UserRole
-    walletBalance Float    @default(0)
-    parentId      String?
-
+    id                String              @id @default(cuid())
+    name              String
+    email             String              @unique
+    phone             String              @unique
+    password          String
+    role              UserRole
+    walletBalance     Float               @default(0)
+    parentId          String?
+    isKyc             Boolean             @default(false)
     status            UserStatus          @default(IN_ACTIVE)
     isAuthorized      Boolean             @default(false)
     createdAt         DateTime            @default(now())
@@ -42,6 +42,7 @@ model KycDetail {
     panImage          String
     aadhaarImageFront String
     aadhaarImageBack  String
+    passbookImage     String    @default("")
     fatherName        String
     dob               String
     homeAddress       String    @db.LongText

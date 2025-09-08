@@ -2,6 +2,8 @@ import express from "express";
 import {
   createUser,
   getAllUsers,
+  getUserById,
+  updateUserStatus,
   // createAgent,
   // createDistributor,
 } from "../controllers/user.controller.js";
@@ -37,5 +39,8 @@ router.get(
   authorizeRoles("ADMIN"),
   getAllUsers
 );
+
+router.patch("/user-status-update/:id", isAuthenticated, updateUserStatus);
+router.get("/get-userById/:id", isAuthenticated, getUserById);
 
 export default router;

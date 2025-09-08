@@ -103,13 +103,81 @@ export const getUsers = asyncHandler(async (req, res) => {
   });
 });
 
-// ✅ Get single user
+// get user by id
 export const getUserById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const user = await Prisma.user.findUnique({ where: { id } });
-  if (!user) return ApiError.send(res, 404, "User not found");
-  const { password, ...safeUser } = user;
-  return res.status(200).json(new ApiResponse(200, "User fetched", safeUser));
+  const requesterRole = req.user.role; 
+
+  if (!id) {
+    return ApiError.send(res, 400, "User ID is required");
+  }
+
+  const user = await Prisma.user.findUnique({
+    where: { id },
+    include: {
+      bankDetails: true,
+      kycDetails: true,
+    },
+  });
+
+  if (!user) {
+    return ApiError.send(res, 404, "User not found");
+  }
+
+  const { password, bankDetails, kycDetails, ...safeUser } = user;
+
+  let safeBank = null;
+  if (bankDetails) {
+    safeBank = {
+      id: bankDetails.id,
+      accountHolder: bankDetails.accountHolder,
+      bankName: bankDetails.bankName,
+      ifscCode: bankDetails.ifscCode,
+      isVerified: bankDetails.isVerified,
+      accountNumber:
+        requesterRole === "ADMIN" || requesterRole === "SUPER_ADMIN"
+          ? bankDetails.accountNumber 
+          : `XXXXXX${bankDetails.accountNumber.slice(-4)}`, 
+    };
+  }
+
+  let safeKyc = null;
+  if (kycDetails) {
+    safeKyc = {
+      id: kycDetails.id,
+      panImage: kycDetails.panImage,
+      aadhaarImageFront: kycDetails.aadhaarImageFront,
+      aadhaarImageBack: kycDetails.aadhaarImageBack,
+      fatherName: kycDetails.fatherName,
+      dob: kycDetails.dob,
+      homeAddress: kycDetails.homeAddress,
+      shopName: kycDetails.shopName,
+      shopAddress: kycDetails.shopAddress,
+      district: kycDetails.district,
+      state: kycDetails.state,
+      pinCode: kycDetails.pinCode,
+      kycStatus: kycDetails.kycStatus,
+      createdAt: kycDetails.createdAt,
+      updatedAt: kycDetails.updatedAt,
+
+      panNumber:
+        requesterRole === "ADMIN" || requesterRole === "SUPER_ADMIN"
+          ? kycDetails.panNumber
+          : `XXXXX${kycDetails.panNumber.slice(-4)}`,
+      aadhaarNumber:
+        requesterRole === "ADMIN" || requesterRole === "SUPER_ADMIN"
+          ? kycDetails.aadhaarNumber
+          : `XXXX XXXX ${kycDetails.aadhaarNumber.slice(-4)}`,
+    };
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, "User fetched successfully", {
+      ...safeUser,
+      bankDetails: safeBank,
+      kycDetails: safeKyc,
+    })
+  );
 });
 
 // ✅ Update user
@@ -169,8 +237,8 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   const users = await Prisma.user.findMany({
     where: {
       NOT: {
-        role: "ADMIN"
-      }
+        role: "ADMIN",
+      },
     },
     orderBy: {
       createdAt: "desc",
@@ -181,4 +249,31 @@ export const getAllUsers = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, "fetched all memebers/users", users));
+});
+
+export const updateUserStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.user;
+  const { status } = req.body;
+
+  if (!id) return ApiError.send(res, 402, "User ID required");
+  if (!status) return ApiError.send(res, 402, "Status required");
+
+  if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
+    return ApiError.send(res, 403, "Only admin can change status");
+  }
+
+  const user = await Prisma.user.findUnique({ where: { id } });
+  if (!user) return ApiError.send(res, 404, "User not found");
+
+  const updatedUser = await Prisma.user.update({
+    where: { id },
+    data: { status, isAuthorized: true },
+  });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, `User status updated to ${status}`, updatedUser)
+    );
 });

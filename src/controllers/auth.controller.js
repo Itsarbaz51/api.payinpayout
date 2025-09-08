@@ -197,7 +197,7 @@ const login = asyncHandler(async (req, res) => {
 
   if (!user) return ApiError.send(res, 404, "User not found");
 
-  if (!user.isAuthorized || user.status !== "ACTIVE") {
+  if (!user.isAuthorized === true || user.status !== "ACTIVE") {
     return ApiError.send(
       res,
       403,
