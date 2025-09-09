@@ -13,6 +13,7 @@ import {
   isAuthenticated,
   authorizeRoles,
 } from "../middlewares/auth.middleware.js";
+import { walletUpload } from "../middlewares/multer.middleware.js";
 
 const router = express.Router();
 
@@ -20,7 +21,12 @@ const router = express.Router();
 router.get("/balance", isAuthenticated, getWalletBalance);
 
 // Add funds (Admin only)
-router.post("/add-funds", isAuthenticated, addFunds);
+router.post(
+  "/add-fund",
+  isAuthenticated,
+  walletUpload.fields([{ name: "paymentImage", maxCount: 1 }]),
+  addFunds
+);
 
 // Deduct funds (user himself)
 router.post("/deduct-funds", isAuthenticated, deductFunds);

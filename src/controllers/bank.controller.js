@@ -70,3 +70,41 @@ export const verifyBank = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, "Bank verified successfully", updated));
 });
+
+export const getAdminBank = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  if (!userId) {
+    return ApiError.send(res, 403, "Unauthorized user");
+  }
+
+  const user = await Prisma.user.findUnique({
+    where: { id: userId },
+    select: { parentId: true },
+  });
+
+  if (!user || !user.parentId) {
+    return ApiError.send(res, 403, "No parent admin linked to this user");
+  }
+
+  const adminBank = await Prisma.bankDetail.findFirst({
+    where: { userId: user.parentId },
+  });
+
+  if (!adminBank) {
+    return ApiError.send(res, 404, "Admin bank details not found");
+  }
+  
+  const data = {
+    accountHolder: adminBank.accountHolder,
+    accountNumber: adminBank.accountNumber,
+    ifscCode: adminBank.ifscCode,
+    bankName: adminBank.bankName,
+  };
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, "Admin bank account fetched successfully", data)
+    );
+});

@@ -19,40 +19,51 @@ export const getWalletBalance = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "Wallet balance fetched", user));
 });
 
-// -------------------- Add Funds (Admin only) --------------------
+// -------------------- Add Fund --------------------
 export const addFunds = asyncHandler(async (req, res) => {
   const userId = req.user?.id;
-  const { amount, description } = req.body;
+  const { amount, provider, paymentId, orderId, paymentImage } = req.body;
 
   if (!userId) {
     return ApiError.send(res, 422, "Unauthorized user");
   }
 
-  if (!amount) {
-    return ApiError.send(res, 422, "amount are required");
+  if (!amount || !provider || !paymentId || !orderId) {
+    return ApiError.send(
+      res,
+      422,
+      "Amount, Provider, PaymentId & OrderId are required"
+    );
   }
 
   if (amount <= 0) {
     return ApiError.send(res, 400, "Amount must be greater than zero");
   }
 
-  const user = await Prisma.user.update({
-    where: { id: userId },
-    data: { walletBalance: { increment: amount } },
-  });
+  // const paymentImagePath = await req.files[0].paymentImage?.path;
 
-  await Prisma.walletTransaction.create({
+  // Create a topup request (status = PENDING by default)
+  const topup = await Prisma.walletTopup.create({
     data: {
       userId,
-      type: "CREDIT",
+      orderId,
+      paymentId,
       amount,
-      description: description,
+      paymentImage,
+      provider,
+      status: "PENDING",
     },
   });
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "Funds added successfully", user));
+    .json(
+      new ApiResponse(
+        200,
+        "Topup request submitted successfully. Waiting for admin approval.",
+        topup
+      )
+    );
 });
 
 // -------------------- Deduct Funds --------------------

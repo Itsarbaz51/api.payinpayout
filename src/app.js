@@ -38,7 +38,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/kyc", kycRoutes);
 app.use("/api/bank", bankRoutes);
 app.use("/api/users", userRoutes);
-app.use("/wallet", walletRoutes);
+app.use("/api/wallet", walletRoutes);
 app.use("/commission", commissionRoutes);
 app.use("/payin", payinRoutes);
 app.use("/payout", payoutRoutes);

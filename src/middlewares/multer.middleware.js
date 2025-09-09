@@ -1,6 +1,7 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { randomInt } from "crypto";
 
 const getStorage = (folderName) =>
   multer.diskStorage({
@@ -15,7 +16,7 @@ const getStorage = (folderName) =>
     },
     filename: (req, file, cb) => {
       const year = new Date().getFullYear();
-      const pincode = req.body.pinCode || "000000";
+      const pincode = req.body.pinCode || randomInt(4);
       const ext = path.extname(file.originalname);
       let prefix = "";
 
@@ -35,6 +36,9 @@ const getStorage = (folderName) =>
         case "passbookImage":
           prefix = "passbook";
           break;
+        case "paymentImage":
+          prefix = "bank-transfer";
+          break;
         default:
           prefix = "file";
       }
@@ -45,3 +49,4 @@ const getStorage = (folderName) =>
 
 export const kycUpload = multer({ storage: getStorage("kyc") });
 export const bankUpload = multer({ storage: getStorage("bank") });
+export const walletUpload = multer({ storage: getStorage("walletTopup") });

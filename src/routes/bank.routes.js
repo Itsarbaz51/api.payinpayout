@@ -4,7 +4,11 @@ import {
   isAuthenticated,
 } from "../middlewares/auth.middleware.js";
 import { bankUpload } from "../middlewares/multer.middleware.js";
-import { addBank, verifyBank } from "../controllers/bank.controller.js";
+import {
+  addBank,
+  getAdminBank,
+  verifyBank,
+} from "../controllers/bank.controller.js";
 
 const router = express.Router();
 
@@ -20,5 +24,7 @@ router.put(
   authorizeRoles(["ADMIN"]),
   verifyBank
 );
+
+router.get("/get-admin-bank", isAuthenticated, getAdminBank);
 
 export default router;

@@ -63,7 +63,6 @@ export const createKyc = asyncHandler(async (req, res) => {
   const aadhaarFrontPath = req.files?.aadhaarImageFront?.[0]?.path;
   const aadhaarBackPath = req.files?.aadhaarImageBack?.[0]?.path;
   const shopAddressPath = req.files?.shopAddressImage?.[0]?.path;
-  const passbookImagePath = req.files?.passbookImage?.[0]?.path;
 
 
 
@@ -71,17 +70,10 @@ export const createKyc = asyncHandler(async (req, res) => {
     !panImagePath ||
     !aadhaarFrontPath ||
     !aadhaarBackPath ||
-    !shopAddressPath ||
-    !passbookImagePath
+    !shopAddressPath 
   ) {
     return ApiError.send(res, 422, "All image files are required");
   }
-
-  console.log("panImagePathfd", panImagePath);
-  console.log("aadhaarFrontPath", aadhaarFrontPath);
-  console.log("aadhaarBackPath", aadhaarBackPath);
-  console.log("shopAddressPath", shopAddressPath);
-  console.log("passbookImagePathdfssssssssssss", passbookImagePath);
 
   // Store in DB
   const kyc = await Prisma.kycDetail.create({
@@ -92,7 +84,6 @@ export const createKyc = asyncHandler(async (req, res) => {
       aadhaarImageFront: aadhaarFrontPath,
       aadhaarImageBack: aadhaarBackPath,
       shopAddressImage: shopAddressPath,
-      passbookImage: passbookImagePath,
       fatherName,
       dob,
       homeAddress,
@@ -168,7 +159,6 @@ export const verifyKyc = asyncHandler(async (req, res) => {
     )
   );
 });
-
 
 // -------------------- KYC get all --------------------
 export const getAllKyc = asyncHandler(async (req, res) => {

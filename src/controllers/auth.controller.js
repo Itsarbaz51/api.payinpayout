@@ -201,7 +201,7 @@ const login = asyncHandler(async (req, res) => {
     return ApiError.send(
       res,
       403,
-      "Your account is not active. Contact Admin/Parent role."
+      "Your account is not active. Contact Admin/Parent."
     );
   }
 
@@ -212,7 +212,7 @@ const login = asyncHandler(async (req, res) => {
   let needsKyc = false;
 
   if (!kyc) {
-    needsKyc = true; // No KYC → still allow login but notify frontend
+    needsKyc = true;
   } else if (kyc.kycStatus === "PENDING") {
     return ApiError.send(
       res,
@@ -234,7 +234,6 @@ const login = asyncHandler(async (req, res) => {
     return ApiError.send(res, 500, "Server error generating access token");
   }
 
-  // ✅ Audit log only for Admin
   if (user.role === "ADMIN") {
     await Prisma.auditLog.create({
       data: {
@@ -247,7 +246,6 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
-  // ✅ Clean user object (remove password)
   const { password: _, ...userWithoutPassword } = user;
 
   res
@@ -259,7 +257,7 @@ const login = asyncHandler(async (req, res) => {
         needsKyc ? "Login success (KYC required)" : "Login success",
         {
           ...userWithoutPassword,
-          token, // ✅ Always include token in response
+          token,
         }
       )
     );
