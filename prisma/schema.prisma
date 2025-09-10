@@ -84,13 +84,15 @@ model Wallet {
     user      User     @relation(fields: [userId], references: [id])
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@map("wallet")
 }
 
 model WalletTopup {
     id           String      @id @default(cuid())
     userId       String
     orderId      String      @unique
-    paymentId    String      @unique
+    paymentId    String?     @unique
     amount       Float
     provider     String
     paymentImage String?
@@ -115,6 +117,8 @@ model UserLimit {
     maxLimit  Float    @default(0)
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@map("user_limit")
 }
 
 model Commission {
@@ -127,6 +131,8 @@ model Commission {
     createdAt DateTime       @default(now())
     updatedAt DateTime       @updatedAt
     user      User?          @relation(fields: [userId], references: [id])
+
+    @@map("commision")
 }
 
 enum CommissionType {
@@ -149,6 +155,8 @@ model PayoutTransaction {
     updatedAt     DateTime  @updatedAt
 
     user User @relation(fields: [userId], references: [id])
+
+    // @@map("user_limit")
 }
 
 model AuditLog {

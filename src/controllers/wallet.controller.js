@@ -22,7 +22,7 @@ export const getWalletBalance = asyncHandler(async (req, res) => {
 // -------------------- Add Fund --------------------
 export const addFunds = asyncHandler(async (req, res) => {
   const userId = req.user?.id;
-  const { amount, provider, paymentId, orderId, paymentImage } = req.body;
+  let { amount, provider, paymentId, orderId } = req.body;
 
   if (!userId) {
     return ApiError.send(res, 422, "Unauthorized user");
@@ -36,20 +36,38 @@ export const addFunds = asyncHandler(async (req, res) => {
     );
   }
 
-  if (amount <= 0) {
-    return ApiError.send(res, 400, "Amount must be greater than zero");
+  amount = parseFloat(amount);
+  if (isNaN(amount) || amount <= 0) {
+    return ApiError.send(res, 400, "Amount must be a valid number > 0");
   }
 
-  // const paymentImagePath = await req.files[0].paymentImage?.path;
+  const paymentImagePath = req.files?.paymentImage?.[0]?.path;
+  if (provider === "BANK_TRANSFER" && !paymentImagePath) {
+    return ApiError.send(
+      res,
+      422,
+      "Payment image is required for bank transfer"
+    );
+  }
 
-  // Create a topup request (status = PENDING by default)
+  // ✅ Duplicate check (paymentId OR orderId)
+  const existingFund = await Prisma.walletTopup.findFirst({
+    where: {
+      OR: [{ paymentId }, { orderId }],
+    },
+  });
+
+  if (existingFund) {
+    return ApiError.send(res, 403, "This fund request already exists");
+  }
+
   const topup = await Prisma.walletTopup.create({
     data: {
       userId,
       orderId,
       paymentId,
       amount,
-      paymentImage,
+      paymentImage: paymentImagePath || null,
       provider,
       status: "PENDING",
     },
@@ -117,27 +135,28 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// ------------------------- Create Order --------------------
+// ------------------------- Create Razorpay Order --------------------
 export const createOrder = asyncHandler(async (req, res) => {
-  const { amount, description } = req.body;
+  const { amount } = req.body;
   const userId = req.user?.id;
 
   if (!userId) return ApiError.send(res, 402, "Unauthorized user access");
 
-  if (!amount || amount <= 0) {
+  const amounts = parseFloat(amount);
+  if (!amounts || amounts <= 0) {
     return ApiError.send(res, 400, "Amount must be greater than zero");
   }
 
   const limit = await Prisma.userLimit.findUnique({ where: { userId } });
-  if (limit && amount > limit.maxLimit) {
+  if (limit && amounts > limit.maxLimit) {
     return ApiError.send(res, 400, `You can only add up to ₹${limit.maxLimit}`);
   }
 
   const options = {
-    amount: amount * 100,
+    amount: amounts * 100, // in paise
     currency: "INR",
     receipt: `wallet_${Date.now()}`,
-    notes: { userId, description },
+    notes: { userId },
   };
 
   const order = await razorpay.orders.create(options);
@@ -146,8 +165,9 @@ export const createOrder = asyncHandler(async (req, res) => {
     data: {
       userId,
       orderId: order.id,
-      amount,
-      status: "CREATED",
+      amount: amounts,
+      provider: "RAZORPAY",
+      status: "VERIFIED",
     },
   });
 
@@ -185,7 +205,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     where: { orderId: razorpay_order_id },
     data: {
       paymentId: razorpay_payment_id,
-      status: "PENDING",
+      status: "PENDING", // waiting for admin approval
     },
   });
 

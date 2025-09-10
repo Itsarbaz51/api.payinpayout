@@ -8,7 +8,7 @@ async function main() {
     where: { email: "admin@gmail.com", role: "ADMIN" },
     update: {},
     create: {
-      name: "Super Admin",
+      name: "Admin",
       email: "admin@gmail.com",
       phone: "9999999999",
       password: hashedPassword,
