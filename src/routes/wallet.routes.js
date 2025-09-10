@@ -37,6 +37,8 @@ router.get("/transactions", isAuthenticated, getWalletTransactions);
 router.post("/create-order", isAuthenticated, createOrder);
 router.post("/verify-payment", isAuthenticated, verifyPayment);
 
+router.post("/get-all-transactions", isAuthenticated, authorizeRoles(["ADMIN"]), getWalletTransactions)
+
 // Admin only
 router.put(
   "/approve/:id",

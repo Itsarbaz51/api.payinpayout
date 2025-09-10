@@ -1,3 +1,4 @@
+import { log } from "console";
 import Prisma from "../db/db.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -120,14 +121,50 @@ export const deductFunds = asyncHandler(async (req, res) => {
 
 // -------------------- Get Wallet Transactions --------------------
 export const getWalletTransactions = asyncHandler(async (req, res) => {
-  const transactions = await Prisma.walletTransaction.findMany({
-    where: { userId: req.user.id },
-    orderBy: { createdAt: "desc" },
+  const { id } = req.user;
+  const type = req.body.trnType;
+
+  if (!id) {
+    return ApiError.send(res, 403, "Unauthorized user access");
+  }
+  if (!type) {
+    return ApiError.send(res, 400, "Transaction type is required");
+  }
+
+  const trnType = type.toUpperCase();
+  console.log("Transaction Type:", trnType);
+
+  // Step 1: Check if user exists
+  const user = await Prisma.user.findUnique({
+    where: { id },
+    include: {
+      walletTopup: {
+        where:
+          ["VERIFIED", "PENDING", "REJECTED"].includes(trnType)
+            ? { status: trnType }
+            : {},
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, "Wallet transactions fetched", transactions));
+  if (!user) {
+    return ApiError.send(res, 404, "User not found");
+  }
+
+  const transactions = user.walletTopup;
+
+  if (!transactions || transactions.length === 0) {
+    return ApiError.send(res, 404, `No transactions found for type ${trnType}`);
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      `Wallet transactions fetched successfully (${trnType})`,
+      transactions
+    )
+  );
 });
 
 const razorpay = new Razorpay({
