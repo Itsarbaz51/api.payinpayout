@@ -5,7 +5,7 @@ import {
   deductFunds,
   getWalletTransactions,
   rejectTopup,
-  approveTopup,
+  updateWalletTopupStats,
   verifyPayment,
   createOrder,
 } from "../controllers/wallet.controller.js";
@@ -41,10 +41,10 @@ router.post("/get-all-transactions", isAuthenticated, authorizeRoles(["ADMIN"]),
 
 // Admin only
 router.put(
-  "/approve/:id",
+  "/update-wallet-topup/:id",
   isAuthenticated,
   authorizeRoles(["ADMIN"]),
-  approveTopup
+  updateWalletTopupStats
 );
 router.put(
   "/reject/:id",

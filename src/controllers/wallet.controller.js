@@ -51,7 +51,7 @@ export const addFunds = asyncHandler(async (req, res) => {
     );
   }
 
-  // ✅ Duplicate check (paymentId OR orderId)
+  // Duplicate check (paymentId OR orderId)
   const existingFund = await Prisma.walletTopup.findFirst({
     where: {
       OR: [{ paymentId }, { orderId }],
@@ -121,7 +121,7 @@ export const deductFunds = asyncHandler(async (req, res) => {
 
 // -------------------- Get Wallet Transactions --------------------
 export const getWalletTransactions = asyncHandler(async (req, res) => {
-  const { id } = req.user;
+  const { id, role } = req.user;
   const type = req.body.trnType;
 
   if (!id) {
@@ -134,37 +134,50 @@ export const getWalletTransactions = asyncHandler(async (req, res) => {
   const trnType = type.toUpperCase();
   console.log("Transaction Type:", trnType);
 
-  // Step 1: Check if user exists
-  const user = await Prisma.user.findUnique({
-    where: { id },
-    include: {
-      walletTopup: {
-        where:
-          ["VERIFIED", "PENDING", "REJECTED"].includes(trnType)
-            ? { status: trnType }
-            : {},
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
+  let userIds = [];
 
-  if (!user) {
-    return ApiError.send(res, 404, "User not found");
+  if (role === "ADMIN") {
+    // Fetch all users under this admin
+    const users = await Prisma.user.findMany({
+      where: { parentId: id }, // or add subParentId if needed
+      select: { id: true },
+    });
+    userIds = users.map((u) => u.id);
+
+    if (userIds.length === 0) {
+      return ApiError.send(res, 404, "No users under this admin");
+    }
+  } else {
+    // Normal user
+    userIds = [id];
   }
 
-  const transactions = user.walletTopup;
+  // Fetch transactions
+  const transactions = await Prisma.walletTopup.findMany({
+    where: {
+      userId: { in: userIds },
+      ...(["VERIFIED", "PENDING", "REJECTED"].includes(trnType)
+        ? { status: trnType }
+        : {}),
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  console.log("Transactions Found:", transactions.length);
 
   if (!transactions || transactions.length === 0) {
     return ApiError.send(res, 404, `No transactions found for type ${trnType}`);
   }
 
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      `Wallet transactions fetched successfully (${trnType})`,
-      transactions
-    )
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        `Wallet transactions fetched successfully (${trnType})`,
+        transactions
+      )
+    );
 });
 
 const razorpay = new Razorpay({
@@ -251,9 +264,12 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "Payment verified, waiting for admin approval"));
 });
 
-// ---------------- Admin Approves Payment -----------------------
-export const approveTopup = asyncHandler(async (req, res) => {
+// ---------------- Admin update  Payment -----------------------
+export const updateWalletTopupStats = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  console.log(req.body);
+  const { status } = req.body;
+  
 
   const topup = await Prisma.walletTopup.findUnique({ where: { id } });
   if (!topup) return ApiError.send(res, 404, "Topup not found");
@@ -262,30 +278,38 @@ export const approveTopup = asyncHandler(async (req, res) => {
     return ApiError.send(res, 400, "This topup is already processed");
   }
 
-  // Add funds to wallet
-  const updatedUser = await Prisma.user.update({
-    where: { id: topup.userId },
-    data: { walletBalance: { increment: topup.amount } },
-  });
+  let updatedUser = null;
 
-  await Prisma.walletTransaction.create({
-    data: {
-      userId: topup.userId,
-      type: "CREDIT",
-      amount: topup.amount,
-      description: "Wallet Top-up via Razorpay (Admin Approved)",
-    },
-  });
+  if (status === "APPROVED") {
+    updatedUser = await Prisma.user.update({
+      where: { id: topup.userId },
+      data: { walletBalance: { increment: topup.amount } },
+    });
+  } else if (status === "REJECTED") {
+    await Prisma.walletTopup.update({
+      where: { id },
+      data: { status: "REJECTED" },
+    });
 
-  // Mark topup as APPROVED
+    return res
+      .status(200)
+      .json(new ApiResponse(200, "Topup rejected successfully", null));
+  }
+
   await Prisma.walletTopup.update({
     where: { id },
-    data: { status: "APPROVED" },
+    data: { status },
   });
 
   return res
     .status(200)
-    .json(new ApiResponse(200, "Topup approved and funds added", updatedUser));
+    .json(
+      new ApiResponse(
+        200,
+        `Topup ${status.toLowerCase()} successfully`,
+        updatedUser
+      )
+    );
 });
 
 // ---------------- Admin Rejects Payment -----------------------
