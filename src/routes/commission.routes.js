@@ -1,10 +1,32 @@
 import express from "express";
-import { setCommission, getCommission } from "../controllers/commission.controller.js";
-import { isAuthenticated, authorizeRoles } from "../middlewares/auth.middleware.js";
+import {
+  addCommission,
+  deleteCommission,
+  getCommissions,
+  updateCommission,
+} from "../controllers/commission.controller.js";
+import {
+  isAuthenticated,
+  authorizeRoles,
+} from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.post("/set", isAuthenticated, authorizeRoles("SUPER_ADMIN"), setCommission);
-router.get("/:userId", isAuthenticated, getCommission);
+router.post(
+  "/add-commission",
+  isAuthenticated,
+  authorizeRoles(["ADMIN"]),
+  addCommission
+);
+
+router.put(
+  "/update-commission/:id",
+  isAuthenticated,
+  authorizeRoles(["ADMIN"]),
+  updateCommission
+);
+
+router.get("/get-user-commissions/:userId", isAuthenticated, getCommissions);
+router.delete("/delete-commissions/:userId", isAuthenticated, deleteCommission);
 
 export default router;

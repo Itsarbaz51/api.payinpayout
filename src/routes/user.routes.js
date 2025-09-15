@@ -36,7 +36,6 @@ router.post(
 router.get(
   "/get-all-users",
   isAuthenticated,
-  authorizeRoles("ADMIN"),
   getAllUsers
 );
 

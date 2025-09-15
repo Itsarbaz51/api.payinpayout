@@ -122,22 +122,29 @@ model UserLimit {
 }
 
 model Commission {
-    id        String         @id @default(cuid())
-    userId    String? // agar specific user ke liye commission set hai
-    role      UserRole? // agar role based commission set hai
-    service   String // example: PAYIN, PAYOUT, BBPS, RECHARGE
-    type      CommissionType // FLAT ya PERCENT
+    id        String             @id @default(cuid())
+    adminId    String
+    role      UserRole
+    service   CommissionServices
+    from      Float
+    to        Float
     value     Float
-    createdAt DateTime       @default(now())
-    updatedAt DateTime       @updatedAt
-    user      User?          @relation(fields: [userId], references: [id])
+    type      CommissionType
+    createdAt DateTime           @default(now())
+    updatedAt DateTime           @updatedAt
+    User      User?              @relation(fields: [adminId], references: [id])
 
-    @@map("commision")
+    @@map("commission")
 }
 
 enum CommissionType {
-    FLAT
+    FIXED
     PERCENT
+}
+
+enum CommissionServices {
+    IMPS
+    NEFT
 }
 
 model PayoutTransaction {

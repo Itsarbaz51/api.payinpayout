@@ -4,7 +4,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/AsyncHandler.js";
 import { hashPassword } from "../utils/lib.js";
 
-// ✅ Role hierarchy map
+// Role hierarchy map
 const roleHierarchy = {
   SUPER_ADMIN: ["API_HOLDER", "ADMIN"],
   API_HOLDER: ["ADMIN"],
@@ -15,7 +15,7 @@ const roleHierarchy = {
   AGENT: [],
 };
 
-// ✅ Create User (generic)
+// Create User (generic)
 export const createUser = asyncHandler(async (req, res) => {
   const { name, email, phone, role, password, pan_number, aadhaar_number } =
     req.body;
@@ -72,7 +72,7 @@ export const createUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, `${role} created successfully`, safeUser));
 });
 
-// ✅ Get all users (filter + pagination)
+// Get all users (filter + pagination)
 export const getUsers = asyncHandler(async (req, res) => {
   const { role, status, page = 1, limit = 10 } = req.query;
   const skip = (page - 1) * limit;
@@ -106,7 +106,7 @@ export const getUsers = asyncHandler(async (req, res) => {
 // get user by id
 export const getUserById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const requesterRole = req.user.role; 
+  const requesterRole = req.user.role;
 
   if (!id) {
     return ApiError.send(res, 400, "User ID is required");
@@ -136,8 +136,8 @@ export const getUserById = asyncHandler(async (req, res) => {
       isVerified: bankDetails.isVerified,
       accountNumber:
         requesterRole === "ADMIN" || requesterRole === "SUPER_ADMIN"
-          ? bankDetails.accountNumber 
-          : `XXXXXX${bankDetails.accountNumber.slice(-4)}`, 
+          ? bankDetails.accountNumber
+          : `XXXXXX${bankDetails.accountNumber.slice(-4)}`,
     };
   }
 
@@ -180,7 +180,7 @@ export const getUserById = asyncHandler(async (req, res) => {
   );
 });
 
-// ✅ Update user
+// Update user
 export const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, email, phone, role, status, isActive } = req.body;
@@ -213,7 +213,7 @@ export const updateUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "User updated", updatedUser));
 });
 
-// ✅ Delete user
+// Delete user
 export const deleteUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const target = await Prisma.user.findUnique({ where: { id } });
@@ -232,23 +232,75 @@ export const deleteUser = asyncHandler(async (req, res) => {
 });
 
 export const getAllUsers = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
-  if (!userId) return ApiError.send(res, 403, "Unauthorized access");
-  const users = await Prisma.user.findMany({
-    where: {
-      NOT: {
-        role: "ADMIN",
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+  const user = req.user;
 
-  if (!users) return ApiError.send(res, 404, "user/members not found.");
+  if (!user?.id || !user?.role) {
+    return ApiError.send(res, 403, "Unauthorized access");
+  }
+
+  let users = [];
+
+  switch (user.role) {
+    case "SUPER_ADMIN":
+      users = await Prisma.user.findMany({
+        where: { NOT: { role: "SUPER_ADMIN" } },
+        orderBy: { createdAt: "desc" },
+      });
+      break;
+
+    case "API_HOLDER":
+      users = await Prisma.user.findMany({
+        where: { parentId: user.id },
+        orderBy: { createdAt: "desc" },
+      });
+      break;
+
+    case "ADMIN":
+      users = await Prisma.user.findMany({
+        where: { parentId: user.id },
+        orderBy: { createdAt: "desc" },
+      });
+      break;
+
+    case "STATE_HOLDER":
+      users = await Prisma.user.findMany({
+        where: { parentId: user.id },
+        orderBy: { createdAt: "desc" },
+      });
+      break;
+
+    case "MASTER_DISTRIBUTOR":
+      users = await Prisma.user.findMany({
+        where: { parentId: user.id },
+        orderBy: { createdAt: "desc" },
+      });
+      break;
+
+    case "DISTRIBUTOR":
+      users = await Prisma.user.findMany({
+        where: { parentId: user.id },
+        orderBy: { createdAt: "desc" },
+      });
+      break;
+
+    case "AGENT":
+      users = await Prisma.user.findMany({
+        where: { id: user.id }, // sirf apna khud ka
+        orderBy: { createdAt: "desc" },
+      });
+      break;
+
+    default:
+      return ApiError.send(res, 403, "You are not allowed to view users.");
+  }
+
+  if (!users || users.length === 0) {
+    return ApiError.send(res, 404, "No users found.");
+  }
+
   return res
     .status(200)
-    .json(new ApiResponse(200, "fetched all memebers/users", users));
+    .json(new ApiResponse(200, "Fetched all members/users", users));
 });
 
 export const updateUserStatus = asyncHandler(async (req, res) => {
