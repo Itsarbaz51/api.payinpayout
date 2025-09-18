@@ -10,8 +10,9 @@ import {
 
 const cookieOptions = {
   httpOnly: true,
-  sameSite: "lax", // allows cross-origin requests from localhost
-  secure: false, // HTTP on dev
+  sameSite: "lax",
+  secure: false, // dev
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
 };
 
 const ALLOWED_ROLES = [
