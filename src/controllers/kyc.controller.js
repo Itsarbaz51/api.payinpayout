@@ -1,7 +1,7 @@
 import Prisma from "../db/db.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import asyncHandler from "../utils/AsyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 // -------------------- Create KYC --------------------
 export const createKyc = asyncHandler(async (req, res) => {
@@ -64,13 +64,11 @@ export const createKyc = asyncHandler(async (req, res) => {
   const aadhaarBackPath = req.files?.aadhaarImageBack?.[0]?.path;
   const shopAddressPath = req.files?.shopAddressImage?.[0]?.path;
 
-
-
   if (
     !panImagePath ||
     !aadhaarFrontPath ||
     !aadhaarBackPath ||
-    !shopAddressPath 
+    !shopAddressPath
   ) {
     return ApiError.send(res, 422, "All image files are required");
   }
@@ -114,7 +112,6 @@ export const verifyKyc = asyncHandler(async (req, res) => {
 
   console.log(status);
   console.log(id);
-  
 
   if (!status) {
     return ApiError.send(res, 400, "Status is required");
@@ -151,13 +148,11 @@ export const verifyKyc = asyncHandler(async (req, res) => {
     });
   }
 
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      `KYC ${normalizedStatus} successfully`,
-      updatedKyc
-    )
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, `KYC ${normalizedStatus} successfully`, updatedKyc)
+    );
 });
 
 // -------------------- KYC get all --------------------

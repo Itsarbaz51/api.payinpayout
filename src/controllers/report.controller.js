@@ -1,6 +1,6 @@
 import Prisma from "../db/db.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import asyncHandler from "../utils/AsyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 // GET /reports/transactions
 const getAllTransactions = asyncHandler(async (req, res) => {

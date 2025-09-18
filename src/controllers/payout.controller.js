@@ -2,7 +2,7 @@ import axios from "axios";
 import Prisma from "../db/db.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import asyncHandler from "../utils/AsyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 const initiatePayout = asyncHandler(async (req, res) => {
   const {
@@ -111,11 +111,11 @@ const getPayoutStatus = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, "Payout status fetched", txn));
 });
 
-// bank add and verified 
+// bank add and verified
 const addBankWithVerifyApi = asyncHandler(async (req, res) => {
   console.log(req.body);
   const { accountHolder, accountNumber, ifscCode, bankName } = req.body;
-  
+
   const userId = req.user?.id;
 
   if (!userId) return ApiError.send(res, 403, "Unauthorized user");
@@ -142,34 +142,34 @@ const addBankWithVerifyApi = asyncHandler(async (req, res) => {
   }
 
   // try {
-    const txnid = Date.now();
+  const txnid = Date.now();
 
-    const response = await axios.post(
-      process.env.URL_BANK_VERIFY,
-      {
-        ifsc: ifscCode,
-        account: accountNumber,
-        name: accountHolder,
-        txnid: txnid,
+  const response = await axios.post(
+    process.env.URL_BANK_VERIFY,
+    {
+      ifsc: ifscCode,
+      account: accountNumber,
+      name: accountHolder,
+      txnid: txnid,
+    },
+    {
+      headers: {
+        "api-key": process.env.API_KEY_BANK_VERIFY,
+        "api-secret-key": process.env.API_SECRET_KEY_BANK_VERIFY,
+        "Content-Type": "application/json",
       },
-      {
-        headers: {
-          "api-key": process.env.API_KEY_BANK_VERIFY,
-          "api-secret-key": process.env.API_SECRET_KEY_BANK_VERIFY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    console.log("response.data0",response.data);
-
-    if (response.data.status !== "SUCCESS") {
-      return ApiError.send(
-        res,
-        400,
-        `Bank verification failed: ${response.data.msg || "Unknown error"}`
-      );
     }
+  );
+
+  console.log("response.data0", response.data);
+
+  if (response.data.status !== "SUCCESS") {
+    return ApiError.send(
+      res,
+      400,
+      `Bank verification failed: ${response.data.msg || "Unknown error"}`
+    );
+  }
   // } catch (error) {
   //   console.error("Bank Verification Error:", error?.response?.data || error);
   //   return ApiError.send(
@@ -202,5 +202,9 @@ const addBankWithVerifyApi = asyncHandler(async (req, res) => {
     );
 });
 
-
-export { initiatePayout, payoutCallback, getPayoutStatus, addBankWithVerifyApi };
+export {
+  initiatePayout,
+  payoutCallback,
+  getPayoutStatus,
+  addBankWithVerifyApi,
+};

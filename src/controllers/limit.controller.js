@@ -1,6 +1,6 @@
 import ApiResponse from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
-import asyncHandler from "../utils/AsyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 import Prisma from "../db/db.js";
 
 // Create or Update Limit

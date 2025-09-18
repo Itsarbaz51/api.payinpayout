@@ -1,7 +1,7 @@
 import Prisma from "../db/db.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import asyncHandler from "../utils/AsyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 export const addBank = asyncHandler(async (req, res) => {
   const { accountHolder, accountNumber, ifscCode, bankName } = req.body;
@@ -94,7 +94,7 @@ export const getAdminBank = asyncHandler(async (req, res) => {
   if (!adminBank) {
     return ApiError.send(res, 404, "Admin bank details not found");
   }
-  
+
   const data = {
     accountHolder: adminBank.accountHolder,
     accountNumber: adminBank.accountNumber,

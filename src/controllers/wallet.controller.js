@@ -2,7 +2,7 @@ import { log } from "console";
 import Prisma from "../db/db.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import asyncHandler from "../utils/AsyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 
@@ -269,7 +269,6 @@ export const updateWalletTopupStats = asyncHandler(async (req, res) => {
   const { id } = req.params;
   console.log(req.body);
   const { status } = req.body;
-  
 
   const topup = await Prisma.walletTopup.findUnique({ where: { id } });
   if (!topup) return ApiError.send(res, 404, "Topup not found");

@@ -1,6 +1,6 @@
 import Prisma from "../db/db.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import asyncHandler from "../utils/AsyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 // POST /users/approve
 const approveUser = asyncHandler(async (req, res) => {
