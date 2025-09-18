@@ -5,6 +5,9 @@ import asyncHandler from "../utils/asyncHandler.js";
 
 // Auth check
 export const isAuthenticated = asyncHandler(async (req, res, next) => {
+  console.log(req.cookies);
+  console.log(req.headers);
+
   const token =
     req.cookies?.accessToken ||
     req.headers["authorization"]?.replace("Bearer ", "");
