@@ -11,7 +11,7 @@ import {
 const cookieOptions = {
   httpOnly: true,
   sameSite: "none",
-  // domain: "airmailo.com",
+  domain: "13.234.26.10",
   secure: false,
 };
 
