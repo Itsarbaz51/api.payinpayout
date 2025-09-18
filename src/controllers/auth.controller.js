@@ -10,8 +10,8 @@ import {
 
 const cookieOptions = {
   httpOnly: true,
-  sameSite: "strict",
-  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax", // allows cross-origin requests from localhost
+  secure: false, // HTTP on dev
 };
 
 const ALLOWED_ROLES = [
