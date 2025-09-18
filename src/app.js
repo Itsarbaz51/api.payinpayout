@@ -39,7 +39,7 @@ app.use("/api/bank", bankRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/commission", commissionRoutes);
-app.use("/payout", payoutRoutes);
+app.use("/api/payout", payoutRoutes);
 app.use("/reports", reportRoutes);
 app.use("/admin", adminRoutes);
 
