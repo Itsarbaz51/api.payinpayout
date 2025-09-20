@@ -1,6 +1,13 @@
 # Created by https://www.toptal.com/developers/gitignore/api/node
 # Edit at https://www.toptal.com/developers/gitignore?templates=node
 
+#Temprory ignore files and folder 
+prisma/
+app.js
+lib.js
+public/
+
+
 ### Node ###
 # Logs
 logs
