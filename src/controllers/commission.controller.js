@@ -159,13 +159,13 @@ const updateCommission = asyncHandler(async (req, res) => {
       "STATE_HOLDER",
       "MASTER_DISTRIBUTOR",
       "DISTRIBUTOR",
-      "AGENT",
+      "RETAILER",
     ];
     if (!validRoles.includes(role)) {
       return ApiError.send(
         res,
         400,
-        "Invalid role. Allowed: STATE_HOLDER, MASTER_DISTRIBUTOR, DISTRIBUTOR, AGENT"
+        "Invalid role. Allowed: STATE_HOLDER, MASTER_DISTRIBUTOR, DISTRIBUTOR, RETAILER"
       );
     }
     toUpdate.role = role;

@@ -2,31 +2,38 @@ import Prisma from "../db/db.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { hashPassword } from "../utils/lib.js";
+import { checkUserAuth, hashPassword } from "../utils/lib.js";
 
-// Role hierarchy map
-const roleHierarchy = {
-  SUPER_ADMIN: ["API_HOLDER", "ADMIN"],
-  API_HOLDER: ["ADMIN"],
-  ADMIN: ["STATE_HOLDER"],
-  STATE_HOLDER: ["MASTER_DISTRIBUTOR"],
-  MASTER_DISTRIBUTOR: ["DISTRIBUTOR"],
-  DISTRIBUTOR: ["AGENT"],
-  AGENT: [],
-};
-
-// Create User (generic)
+// ================ Create user by SUPER_ADMIN ================
 export const createUser = asyncHandler(async (req, res) => {
-  const { name, email, phone, role, password, pan_number, aadhaar_number } =
-    req.body;
-  const creatorRole = req.user.role;
+  const userExists = await checkUserAuth(req, res, req.user.role);
+  if (!userExists) return;
 
-  // Check if allowed
-  if (!roleHierarchy[creatorRole].includes(role)) {
-    return ApiError.send(res, 403, `${creatorRole} cannot create ${role}`);
+  const { name, email, phone, role, password } = req.body;
+
+  if (!name || !email || !phone || !role || !password) {
+    return ApiError.send(res, 403, "All fields are required");
   }
 
-  // Duplicate check
+  const roleHierarchy = {
+    ADMIN: ["STATE_HEAD", "MASTER_DISTRIBUTOR", "DISTRIBUTOR", "RETAILER"],
+    STATE_HEAD: ["MASTER_DISTRIBUTOR", "DISTRIBUTOR", "RETAILER"],
+    MASTER_DISTRIBUTOR: ["DISTRIBUTOR", "RETAILER"],
+    DISTRIBUTOR: ["RETAILER"],
+    RETAILER: [],
+  };
+
+  const creatorRole = userExists.role;
+  const allowedRoles = roleHierarchy[creatorRole] || [];
+
+  if (!allowedRoles.includes(role)) {
+    return ApiError.send(
+      res,
+      403,
+      `${creatorRole} is not allowed to create ${role}`
+    );
+  }
+
   const exists = await Prisma.user.findFirst({
     where: { OR: [{ email }, { phone }] },
   });
@@ -39,32 +46,25 @@ export const createUser = asyncHandler(async (req, res) => {
   }
 
   const hashedPassword = await hashPassword(password);
+  const pinCode = Math.floor(100000 + Math.random() * 900000).toString();
 
   const newUser = await Prisma.user.create({
     data: {
       name,
       email,
       phone,
+      parentId: userExists.id,
+      pin: pinCode,
       password: hashedPassword,
       role,
-      pan_number,
-      aadhaar_number,
-      parent_id: req.user.id,
-      isActive: true,
       isAuthorized: true,
-      status: "ACTIVE",
+      status: "IN_ACTIVE",
     },
   });
 
-  await Prisma.auditLog.create({
-    data: {
-      user_id: req.user.id,
-      action: "USER_CREATED",
-      description: `${creatorRole} ${req.user.email} created ${role}: ${email}`,
-      ip_address: req.ip,
-      user_agent: req.get("User-Agent"),
-    },
-  });
+  if (!newUser) {
+    return ApiError.send(res, 500, `${role} not created | Server Error`);
+  }
 
   const { password: _, ...safeUser } = newUser;
   return res
@@ -238,60 +238,35 @@ export const getAllUsers = asyncHandler(async (req, res) => {
     return ApiError.send(res, 403, "Unauthorized access");
   }
 
+  const roleHierarchy = {
+    SUPER_ADMIN: "ADMIN",
+    ADMIN: "STATE_HOLDER",
+    STATE_HOLDER: "MASTER_DISTRIBUTOR",
+    MASTER_DISTRIBUTOR: "DISTRIBUTOR",
+    DISTRIBUTOR: "RETAILER",
+    RETAILER: null,
+  };
+
   let users = [];
+  const allowedRole = roleHierarchy[user.role];
 
-  switch (user.role) {
-    case "SUPER_ADMIN":
-      users = await Prisma.user.findMany({
-        where: { NOT: { role: "SUPER_ADMIN" } },
-        orderBy: { createdAt: "desc" },
-      });
-      break;
-
-    case "API_HOLDER":
-      users = await Prisma.user.findMany({
-        where: { parentId: user.id },
-        orderBy: { createdAt: "desc" },
-      });
-      break;
-
-    case "ADMIN":
-      users = await Prisma.user.findMany({
-        where: { parentId: user.id },
-        orderBy: { createdAt: "desc" },
-      });
-      break;
-
-    case "STATE_HOLDER":
-      users = await Prisma.user.findMany({
-        where: { parentId: user.id },
-        orderBy: { createdAt: "desc" },
-      });
-      break;
-
-    case "MASTER_DISTRIBUTOR":
-      users = await Prisma.user.findMany({
-        where: { parentId: user.id },
-        orderBy: { createdAt: "desc" },
-      });
-      break;
-
-    case "DISTRIBUTOR":
-      users = await Prisma.user.findMany({
-        where: { parentId: user.id },
-        orderBy: { createdAt: "desc" },
-      });
-      break;
-
-    case "AGENT":
-      users = await Prisma.user.findMany({
-        where: { id: user.id }, // sirf apna khud ka
-        orderBy: { createdAt: "desc" },
-      });
-      break;
-
-    default:
-      return ApiError.send(res, 403, "You are not allowed to view users.");
+  if (!allowedRole) {
+    // AGENT or last role → apne neeche wale (parentId / subParentId se linked)
+    users = await Prisma.user.findMany({
+      where: {
+        OR: [{ parentId: user.id }, { subParentId: user.id }],
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } else {
+    // Sirf ek level neeche wala role
+    users = await Prisma.user.findMany({
+      where: {
+        parentId: user.id,
+        role: allowedRole,
+      },
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   if (!users || users.length === 0) {

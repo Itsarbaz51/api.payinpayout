@@ -58,6 +58,7 @@ export const createKyc = asyncHandler(async (req, res) => {
   if (existingKyc) {
     return ApiError.send(res, 409, "PAN or Aadhaar already exists");
   }
+  console.log("req.files", req.files);
 
   const panImagePath = req.files?.panImage?.[0]?.path;
   const aadhaarFrontPath = req.files?.aadhaarImageFront?.[0]?.path;

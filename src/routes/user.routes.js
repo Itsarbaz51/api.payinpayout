@@ -15,9 +15,15 @@ import {
 const router = express.Router();
 
 router.post(
-  "/create-admin",
+  "/create-user",
   isAuthenticated,
-  authorizeRoles("SUPER_ADMIN"),
+  authorizeRoles([
+    "ADMIN",
+    "STATE_HEAD",
+    "MASTER_DISTRIBUTOR",
+    "DISTRIBUTOR",
+    "RETAILER",
+  ]),
   createUser
 );
 // router.post(
@@ -33,11 +39,7 @@ router.post(
 //   createDistributor
 // );
 
-router.get(
-  "/get-all-users",
-  isAuthenticated,
-  getAllUsers
-);
+router.get("/get-all-users", isAuthenticated, getAllUsers);
 
 router.patch("/user-status-update/:id", isAuthenticated, updateUserStatus);
 router.get("/get-userById/:id", isAuthenticated, getUserById);

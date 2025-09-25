@@ -10,8 +10,7 @@ import {
 
 const cookieOptions = {
   httpOnly: true,
-  sameSite: "none",
-  domain: "13.234.26.10",
+  sameSite: "lax",
   secure: false,
 };
 
@@ -19,14 +18,14 @@ const ALLOWED_ROLES = [
   "STATE_HOLDER",
   "MASTER_DISTRIBUTOR",
   "DISTRIBUTOR",
-  "AGENT",
+  "RETAILER",
 ];
 
 const ROLE_HIERARCHY = {
-  ADMIN: ["STATE_HOLDER", "MASTER_DISTRIBUTOR", "DISTRIBUTOR", "AGENT"],
-  STATE_HOLDER: ["MASTER_DISTRIBUTOR", "DISTRIBUTOR", "AGENT"],
-  MASTER_DISTRIBUTOR: ["DISTRIBUTOR", "AGENT"],
-  DISTRIBUTOR: ["AGENT"],
+  ADMIN: ["STATE_HOLDER", "MASTER_DISTRIBUTOR", "DISTRIBUTOR", "RETAILER"],
+  STATE_HOLDER: ["MASTER_DISTRIBUTOR", "DISTRIBUTOR", "RETAILER"],
+  MASTER_DISTRIBUTOR: ["DISTRIBUTOR", "RETAILER"],
+  DISTRIBUTOR: ["RETAILER"],
 };
 
 // -------------------- public Register --------------------
